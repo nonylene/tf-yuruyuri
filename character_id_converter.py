@@ -21,6 +21,8 @@ for face in faces:
         c_id = 1
     elif face.character == "tinatsu":
         c_id = 2
+    elif face.character == "yui":
+        c_id = 2
     elif face.character == "titose":
         c_id = 3
     elif face.character == "ayano":

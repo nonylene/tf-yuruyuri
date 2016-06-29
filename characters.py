@@ -1,20 +1,22 @@
 CHARACTERS = {
-        0 : ("akari", ["akari"])
-        1 : ("kyoko", ["kyoko"])
-        2 : ("tinatsu", ["tinatsu"])
-        3 : ("titose", ["titose"])
-        4 : ("ayano", ["ayano"])
-        5 : ("sakurako", ["sakurako"])
-        6 : ("himawari", ["himawari"])
-        7 : ("other", [
+        0 : ("akari", ["akari"]),
+        1 : ("kyoko", ["kyoko"]),
+        2 : ("tinatsu", ["tinatsu"]),
+        3 : ("yui", ["yui"]),
+        4 : ("titose", ["titose"]),
+        5 : ("ayano", ["ayano"]),
+        6 : ("sakurako", ["sakurako"]),
+        7 : ("himawari", ["himawari"]),
+        8 : ("other", [
             "other_yuri"
             ,"other_face"
             ,"other_other"
+            ,"other"
             ])
         }
 
-def search(character):
-    for id, characters in CHARACTERS:
-        if character[1] in characters:
-            return character
+def search_id(character):
+    for id, characters in CHARACTERS.items():
+        if character in characters[1]:
+            return id 
     return -1
