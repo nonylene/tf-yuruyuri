@@ -14,7 +14,7 @@ value = tf.read_file(filename)
 
 images = tf.image.decode_png(value, channels = 3)
 
-resized_images = tf.image.resize_images(images, 32, 32)
+resized_images = tf.image.resize_images(images, 96, 96)
 img = tf.image.per_image_whitening(resized_images)
 
 logits = cifar10.inference(tf.expand_dims(img, 0))
