@@ -9,15 +9,19 @@ import os
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
+import characters
+import face
+
 # Process images of this size. Note that this differs from the original CIFAR
 # image size of 32 x 32. If one alters this number, then the entire model
 # architecture will change and any model would need to be retrained.
-IMAGE_SIZE = 32
+IMAGE_SIZE = 96
 
 # Global constants describing the CIFAR-10 data set.
-NUM_CLASSES = 8
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 1440
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 360
+NUM_CLASSES = len(characters.CHARACTERS)
+face_count = face.Face.select().count()
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = int(face_count * 5 / 6)
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = int(face_count / 6)
 
 
 def read_cifar10(filename_queue):
@@ -50,8 +54,8 @@ def read_cifar10(filename_queue):
   # See http://www.cs.toronto.edu/~kriz/cifar.html for a description of the
   # input format.
   label_bytes = 1  # 2 for CIFAR-100
-  result.height = 32
-  result.width = 32
+  result.height = 96
+  result.width = 96
   result.depth = 3
   image_bytes = result.height * result.width * result.depth
   # Every record consists of a label followed by the image, with a
@@ -151,7 +155,7 @@ def distorted_inputs(data_dir, batch_size):
   # distortions applied to the image.
 
   # Randomly crop a [height, width] section of the image.
-  # distorted_image = tf.random_crop(reshaped_image, [height, width, 3])
+  # resized_image = tf.random_crop(reshaped_image, [height, width, 3])
 
   # Image processing for evaluation.
   # Crop the central [height, width] of the image.

@@ -33,7 +33,7 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
+INITIAL_LEARNING_RATE = 1e-5       # Initial learning rate.
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -60,24 +60,10 @@ def _activation_summary(x):
   tf.histogram_summary(tensor_name + '/activations', x)
   tf.scalar_summary(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
+def _constant_variable(value, shape, name):
+    return tf.Variable(tf.constant(value, shape = shape), name = name)
 
-def _variable_on_cpu(name, shape, initializer):
-  """Helper to create a Variable stored on CPU memory.
-
-  Args:
-    name: name of the variable
-    shape: list of ints
-    initializer: initializer for Variable
-
-  Returns:
-    Variable Tensor
-  """
-  with tf.device('/cpu:0'):
-    var = tf.get_variable(name, shape, initializer=initializer)
-  return var
-
-
-def _variable_with_weight_decay(name, shape, stddev, wd):
+def _truncated_normal_value(shape, stddev, name, wd):
   """Helper to create an initialized Variable with weight decay.
 
   Note that the Variable is initialized with a truncated normal distribution.
@@ -93,13 +79,11 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   Returns:
     Variable Tensor
   """
-  var = _variable_on_cpu(name, shape,
-                         tf.truncated_normal_initializer(stddev=stddev))
+  var = tf.Variable(tf.truncated_normal(shape, stddev = stddev), name = name)
   if wd is not None:
     weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
   return var
-
 
 def distorted_inputs():
   """Construct distorted input for CIFAR training using the Reader ops.
@@ -147,71 +131,104 @@ def inference(images):
   Returns:
     Logits.
   """
-  # We instantiate all variables using tf.get_variable() instead of
-  # tf.Variable() in order to share variables across multiple GPU training runs.
-  # If we only ran this model on a single GPU, we could simplify this function
-  # by replacing all instances of tf.get_variable() with tf.Variable().
-  #
   # conv1
   with tf.variable_scope('conv1') as scope:
-    kernel = _variable_with_weight_decay('weights', shape=[5, 5, 3, 64],
-                                         stddev=1e-4, wd=0.0)
+    kernel = _truncated_normal_value(shape=[5, 5, 3, 25], stddev=5e-2, name='weights', wd=0.0)
     conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
-    biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
+    biases = _constant_variable(0.1, [25], 'biases')
     bias = tf.nn.bias_add(conv, biases)
     conv1 = tf.nn.relu(bias, name=scope.name)
     _activation_summary(conv1)
+
 
   # pool1
   pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],
                          padding='SAME', name='pool1')
   # norm1
-  norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
-                    name='norm1')
+  # norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
+  #                   name='norm1')
+
 
   # conv2
   with tf.variable_scope('conv2') as scope:
-    kernel = _variable_with_weight_decay('weights', shape=[5, 5, 64, 64],
-                                         stddev=1e-4, wd=0.0)
-    conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
-    biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.1))
+    kernel = _truncated_normal_value(shape=[5, 5, 25, 70], stddev=5e-2, name='weights', wd=0.0)
+    conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], padding='SAME')
+    biases = _constant_variable(0.1, [70], 'biases')
     bias = tf.nn.bias_add(conv, biases)
     conv2 = tf.nn.relu(bias, name=scope.name)
     _activation_summary(conv2)
 
-  # norm2
-  norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
-                    name='norm2')
+  # conv0
+  with tf.variable_scope('conv0') as scope:
+    kernel = _truncated_normal_value(shape=[3, 3, 70, 95], stddev=5e-2, name='weights', wd=0.0)
+    conv = tf.nn.conv2d(conv2, kernel, [1, 1, 1, 1], padding='SAME')
+    biases = _constant_variable(0.1, [95], 'biases')
+    bias = tf.nn.bias_add(conv, biases)
+    conv0 = tf.nn.relu(bias, name=scope.name)
+    _activation_summary(conv0)
+
   # pool2
-  pool2 = tf.nn.max_pool(norm2, ksize=[1, 3, 3, 1],
-                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+  pool2 = tf.nn.max_pool(conv0, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],
+                         padding='SAME', name='pool2')
+
+  # # norm2
+  # norm2 = tf.nn.lrn(pool2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
+  #                   name='norm2')
+  # conv3
+  with tf.variable_scope('conv3') as scope:
+    kernel = _truncated_normal_value(shape=[3, 3, 95, 110], stddev=5e-2, name='weights', wd=0.0)
+    conv = tf.nn.conv2d(pool2, kernel, [1, 1, 1, 1], padding='SAME')
+    biases = _constant_variable(0.1, [110], 'biases')
+    bias = tf.nn.bias_add(conv, biases)
+    conv3 = tf.nn.relu(bias, name=scope.name)
+    _activation_summary(conv3)
+
+  # # norm3
+  # norm3 = tf.nn.lrn(conv3, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
+  #                   name='norm3')
+
+  # pool3
+  pool3 = tf.nn.max_pool(conv3, ksize=[1, 3, 3, 1],
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool3')
+
+  # conv4
+  with tf.variable_scope('conv4') as scope:
+    kernel = _truncated_normal_value(shape=[3, 3, 110, 120], stddev=5e-2, name='weights', wd=0.0)
+    conv = tf.nn.conv2d(pool3, kernel, [1, 1, 1, 1], padding='SAME')
+    biases = _constant_variable(0.1, [120], 'biases')
+    bias = tf.nn.bias_add(conv, biases)
+    conv4 = tf.nn.relu(bias, name=scope.name)
+    _activation_summary(conv4)
+
+  # # norm4
+  # norm4 = tf.nn.lrn(conv4, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
+  #                   name='norm4')
+  # pool4
+  pool4 = tf.nn.max_pool(conv4, ksize=[1, 3, 3, 1],
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool4')
 
   # local3
   with tf.variable_scope('local3') as scope:
     # Move everything into depth so we can perform a single matrix multiply.
-    reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
+    reshape = tf.reshape(pool4, [FLAGS.batch_size, -1])
     dim = reshape.get_shape()[1].value
-    weights = _variable_with_weight_decay('weights', shape=[dim, 384],
-                                          stddev=0.04, wd=0.004)
-    biases = _variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
+    weights = _truncated_normal_value(shape=[dim, 192], stddev=0.04, name='weights', wd=0.004)
+    biases = _constant_variable(0.1, [192], 'biases')
     local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
     _activation_summary(local3)
 
   # local4
   with tf.variable_scope('local4') as scope:
-    weights = _variable_with_weight_decay('weights', shape=[384, 192],
-                                          stddev=0.04, wd=0.004)
-    biases = _variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
+    weights = _truncated_normal_value(shape=[192, 96], stddev=0.04, name='weights', wd=0.004)
+    biases = _constant_variable(0.1, [96], 'biases')
     local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
     _activation_summary(local4)
 
   # softmax, i.e. softmax(WX + b)
   with tf.variable_scope('softmax_linear') as scope:
-    weights = _variable_with_weight_decay('weights', [192, NUM_CLASSES],
-                                          stddev=1/192.0, wd=0.0)
-    biases = _variable_on_cpu('biases', [NUM_CLASSES],
-                              tf.constant_initializer(0.0))
-    softmax_linear = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
+    weights = _truncated_normal_value(shape=[96, NUM_CLASSES], stddev=1/96.0, name='weights', wd=0.0)
+    biases = _constant_variable(0.0, [NUM_CLASSES], 'biases')
+    softmax_linear = tf.nn.log_softmax(tf.matmul(local4, weights)+ biases, name=scope.name)
     _activation_summary(softmax_linear)
 
   return softmax_linear
@@ -298,7 +315,8 @@ def train(total_loss, global_step):
 
   # Compute gradients.
   with tf.control_dependencies([loss_averages_op]):
-    opt = tf.train.GradientDescentOptimizer(lr)
+    # opt = tf.train.GradientDescentOptimizer(lr)
+    opt = tf.train.AdamOptimizer(lr)
     grads = opt.compute_gradients(total_loss)
 
   # Apply gradients.
