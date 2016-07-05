@@ -7,7 +7,12 @@ CHARACTERS = {
         5 : ("ayano", ["ayano"]),
         6 : ("sakurako", ["sakurako"]),
         7 : ("himawari", ["himawari"]),
-        8 : ("other", [
+        8 : ("tomoko", ["tomoko"]),
+        9 : ("rise", ["rise"]),
+        10 : ("mari", ["mari"]),
+        11 : ("hanako", ["hanako"]),
+        12 : ("kaede", ["kaede"]),
+        13 : ("other", [
             "other_yuri"
             ,"other_face"
             ,"other_other"
