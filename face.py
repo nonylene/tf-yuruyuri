@@ -14,8 +14,7 @@ class Face(peewee.Model):
     character = peewee.TextField(null = True)
     face_path = peewee.TextField(null = False)
     original_id = peewee.IntegerField(null = False)
-    thumb_path = peewee.IntegerField(null = True)
+    thumb_path = peewee.TextField(null = True)
 
     class Meta:
         database = db
-

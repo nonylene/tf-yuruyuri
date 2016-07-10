@@ -28,7 +28,8 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.3  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 1e-3      # Initial learning rate.
+INITIAL_LEARNING_RATE = 1e-3
+# Initial learning rate.
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -183,10 +184,26 @@ def inference(images):
   pool3 = tf.nn.max_pool(conv3, ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1], padding='SAME', name='pool3')
 
-  # conv4
-  with tf.variable_scope('conv4') as scope:
+  # conv0
+  with tf.variable_scope('conv0') as scope:
     kernel = _truncated_normal_value(shape=[3, 3, 100, 110], stddev=5e-2, name='weights', wd=0.0)
     conv = tf.nn.conv2d(pool3, kernel, [1, 1, 1, 1], padding='SAME')
+    biases = _constant_variable(0.1, [110], 'biases')
+    bias = tf.nn.bias_add(conv, biases)
+    conv0 = tf.nn.relu(bias, name=scope.name)
+    _activation_summary(conv0)
+
+  # # norm4
+  # norm4 = tf.nn.lrn(conv4, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
+  #                   name='norm4')
+  # pool4
+  pool0 = tf.nn.max_pool(conv0, ksize=[1, 3, 3, 1],
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool0')
+
+  # conv4
+  with tf.variable_scope('conv4') as scope:
+    kernel = _truncated_normal_value(shape=[3, 3, 110, 110], stddev=5e-2, name='weights', wd=0.0)
+    conv = tf.nn.conv2d(pool0, kernel, [1, 1, 1, 1], padding='SAME')
     biases = _constant_variable(0.1, [110], 'biases')
     bias = tf.nn.bias_add(conv, biases)
     conv4 = tf.nn.relu(bias, name=scope.name)

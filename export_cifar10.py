@@ -14,7 +14,7 @@ def export(ran, filename):
         for i in ran:
             print (i)
             face = faces[i]
-            im = Image.open(face.face_path).resize((96,96))
+            im = Image.open(face.face_path).resize((124,124))
             im = (np.array(im))
             r = im[:,:,0].flatten()
             g = im[:,:,1].flatten()
