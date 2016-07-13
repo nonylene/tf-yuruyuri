@@ -18,7 +18,3 @@ class Face(peewee.Model):
 
     class Meta:
         database = db
-        indexes = (
-                (("pic_path", "character"), False),
-        )
-
